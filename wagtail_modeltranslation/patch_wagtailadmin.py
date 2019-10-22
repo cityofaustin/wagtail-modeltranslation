@@ -48,8 +48,10 @@ from wagtail_modeltranslation.utils import compare_class_tree_depth
 
 logger = logging.getLogger('wagtail.core')
 
-SIMPLE_PANEL_CLASSES = [FieldPanel, ImageChooserPanel, StreamFieldPanel, RichTextFieldPanel] + CUSTOM_SIMPLE_PANELS
-COMPOSED_PANEL_CLASSES = [MultiFieldPanel, FieldRowPanel] + CUSTOM_COMPOSED_PANELS
+SIMPLE_PANEL_CLASSES = [FieldPanel, ImageChooserPanel,
+                        StreamFieldPanel, RichTextFieldPanel] + CUSTOM_SIMPLE_PANELS
+COMPOSED_PANEL_CLASSES = [MultiFieldPanel,
+                          FieldRowPanel] + CUSTOM_COMPOSED_PANELS
 
 
 class WagtailTranslator(object):
@@ -88,7 +90,8 @@ class WagtailTranslator(object):
             if hasattr(model, 'promote_panels'):
                 model.promote_panels = self._patch_panels(model.promote_panels)
             if hasattr(model, 'settings_panels'):
-                model.settings_panels = self._patch_panels(model.settings_panels)
+                model.settings_panels = self._patch_panels(
+                    model.settings_panels)
 
         # Clear the edit handler cached value, if it exists, so wagtail reconstructs
         # the edit_handler based on the patched panels
@@ -96,7 +99,8 @@ class WagtailTranslator(object):
 
         # SEARCH FIELDS PATCHING
 
-        translation_registered_fields = translator.get_options_for_model(model).fields
+        translation_registered_fields = translator.get_options_for_model(
+            model).fields
 
         for field in model.search_fields:
             # Check if the field is a SearchField and if it is one of the fields registered for translation
@@ -105,8 +109,10 @@ class WagtailTranslator(object):
                 # and replace its name by the translated one
                 for language in mt_settings.AVAILABLE_LANGUAGES:
                     translated_field = copy.deepcopy(field)
-                    translated_field.field_name = build_localized_fieldname(field.field_name, language)
-                    model.search_fields = list(model.search_fields) + [translated_field]
+                    translated_field.field_name = build_localized_fieldname(
+                        field.field_name, language)
+                    model.search_fields = list(
+                        model.search_fields) + [translated_field]
 
         # OVERRIDE FIELDS
         model_fields = model._meta.get_fields()
@@ -137,11 +143,13 @@ class WagtailTranslator(object):
             model.panels = self._patch_panels(model.panels)
         else:
             panels = extract_panel_definitions_from_model_class(model)
-            translation_registered_fields = translator.get_options_for_model(model).fields
-            panels = filter(lambda field: field.field_name not in translation_registered_fields, panels)
+            translation_registered_fields = translator.get_options_for_model(
+                model).fields
+            panels = filter(
+                lambda field: field.field_name not in translation_registered_fields, panels)
             edit_handler = ObjectList(panels)
 
-            SNIPPET_EDIT_HANDLERS[model] = edit_handler.bind_to_model(model)
+            SNIPPET_EDIT_HANDLERS[model] = edit_handler.bind_to(model=model)
 
     def _patch_panels(self, panels_list, related_model=None):
         """
@@ -153,9 +161,11 @@ class WagtailTranslator(object):
 
         for panel in panels_list:
             if panel.__class__ in SIMPLE_PANEL_CLASSES:
-                patched_panels += self._patch_simple_panel(current_patching_model, panel)
+                patched_panels += self._patch_simple_panel(
+                    current_patching_model, panel)
             elif panel.__class__ in COMPOSED_PANEL_CLASSES:
-                patched_panels.append(self._patch_composed_panel(panel, related_model))
+                patched_panels.append(
+                    self._patch_composed_panel(panel, related_model))
             elif panel.__class__ == InlinePanel:
                 patched_panels.append(self._patch_inline_panel(panel))
             else:
@@ -166,7 +176,8 @@ class WagtailTranslator(object):
     def _patch_simple_panel(self, model, original_panel):
         panel_class = original_panel.__class__
         translated_panels = []
-        translation_registered_fields = translator.get_options_for_model(model).fields
+        translation_registered_fields = translator.get_options_for_model(
+            model).fields
 
         # If the panel field is not registered for translation
         # the original one is returned
@@ -175,7 +186,8 @@ class WagtailTranslator(object):
 
         for language in mt_settings.AVAILABLE_LANGUAGES:
             original_field = model._meta.get_field(original_panel.field_name)
-            localized_field_name = build_localized_fieldname(original_panel.field_name, language)
+            localized_field_name = build_localized_fieldname(
+                original_panel.field_name, language)
 
             # if the original field is required and the current language is the default one
             # this field's blank property is set to False
@@ -187,7 +199,8 @@ class WagtailTranslator(object):
                 # if it's a StreamField the stream_block need to be changed to non required
                 localized_field = model._meta.get_field(localized_field_name)
                 new_stream_block = copy.copy(localized_field.stream_block)
-                new_stream_block.meta = copy.copy(localized_field.stream_block.meta)
+                new_stream_block.meta = copy.copy(
+                    localized_field.stream_block.meta)
                 new_stream_block.meta.required = False
                 localized_field.stream_block = new_stream_block
 
@@ -205,7 +218,8 @@ class WagtailTranslator(object):
 
     def _patch_composed_panel(self, original_panel, related_model=None):
         panel_class = original_panel.__class__
-        patched_children_panels = self._patch_panels(original_panel.children, related_model)
+        patched_children_panels = self._patch_panels(
+            original_panel.children, related_model)
 
         localized_panel = panel_class(patched_children_panels)
 
@@ -235,7 +249,8 @@ class WagtailTranslator(object):
         except NotRegistered:
             pass
         else:
-            related_model.panels = self._patch_panels(getattr(related_model, 'panels', []), related_model)
+            related_model.panels = self._patch_panels(
+                getattr(related_model, 'panels', []), related_model)
 
         # The original panel is returned as only the related_model panels need to be
         # patched, leaving the original untouched
@@ -249,9 +264,11 @@ def _localized_set_url_path(page, parent, language):
     Updates a localized url_path for a given language
     """
     localized_slug_field = build_localized_fieldname('slug', language)
-    default_localized_slug_field = build_localized_fieldname('slug', mt_settings.DEFAULT_LANGUAGE)
+    default_localized_slug_field = build_localized_fieldname(
+        'slug', mt_settings.DEFAULT_LANGUAGE)
     localized_url_path_field = build_localized_fieldname('url_path', language)
-    default_localized_url_path_field = build_localized_fieldname('url_path', mt_settings.DEFAULT_LANGUAGE)
+    default_localized_url_path_field = build_localized_fieldname(
+        'url_path', mt_settings.DEFAULT_LANGUAGE)
 
     if parent:
         # Emulate the default behavior of django-modeltranslation to get the slug and url path
@@ -260,7 +277,8 @@ def _localized_set_url_path(page, parent, language):
         slug = getattr(page, localized_slug_field, None) or \
             getattr(page, default_localized_slug_field, None) or page.slug
         parent_url_path = getattr(parent, localized_url_path_field, None) or \
-            getattr(parent, default_localized_url_path_field, None) or parent.url_path
+            getattr(parent, default_localized_url_path_field,
+                    None) or parent.url_path
 
         setattr(page, localized_url_path_field, parent_url_path + slug + '/')
 
@@ -347,7 +365,8 @@ def _validate_slugs(page):
         siblings_slugs = [sibling.slug for sibling in siblings]
 
         if page.slug in siblings_slugs:
-            errors[build_localized_fieldname('slug', language)] = _("This slug is already in use")
+            errors[build_localized_fieldname('slug', language)] = _(
+                "This slug is already in use")
 
     # Re-enable the original language
     trans_real.activate(current_language)
@@ -386,12 +405,14 @@ def _localized_update_descendant_url_paths(page, old_url_path, new_url_path, lan
             SET {localized_url_path}= CONCAT(%s, (SUBSTRING({localized_url_path}, 0, %s)))
             WHERE path LIKE %s AND id <> %s
         """.format(localized_url_path=localized_url_path)
-        cursor.execute(update_statement, [new_url_path, len(old_url_path) + 1, page.path + '%', page.id])
+        cursor.execute(update_statement, [new_url_path, len(
+            old_url_path) + 1, page.path + '%', page.id])
     else:
         (Page.objects
             .rewrite(False)
             .filter(path__startswith=page.path)
-            .exclude(**{localized_url_path: None})  # url_path_xx may not be set yet
+            # url_path_xx may not be set yet
+            .exclude(**{localized_url_path: None})
             .exclude(pk=page.pk)
             .update(**{localized_url_path: Concat(
                 Value(new_url_path),
@@ -438,7 +459,8 @@ def _new_get_url_parts(self, request=None):
     """
     for (site_id, root_path, root_url) in self._get_site_root_paths(request):
         if self.url_path.startswith(root_path):
-            page_path = reverse('wagtail_serve', args=(self.url_path[len(root_path):],))
+            page_path = reverse('wagtail_serve', args=(
+                self.url_path[len(root_path):],))
 
             # Remove the trailing slash from the URL reverse generates if
             # WAGTAIL_APPEND_SLASH is False and we're not trying to serve
@@ -452,18 +474,22 @@ def _new_get_url_parts(self, request=None):
 def _update_translation_descendant_url_paths(old_record, page):
     # update children paths, must be done for all languages to ensure fallbacks are applied
     languages_changed = []
-    default_localized_url_path = build_localized_fieldname('url_path', mt_settings.DEFAULT_LANGUAGE)
+    default_localized_url_path = build_localized_fieldname(
+        'url_path', mt_settings.DEFAULT_LANGUAGE)
     for language in mt_settings.AVAILABLE_LANGUAGES:
         localized_url_path = build_localized_fieldname('url_path', language)
-        old_url_path = getattr(old_record, localized_url_path) or getattr(old_record, default_localized_url_path) or ''
-        new_url_path = getattr(page, localized_url_path) or getattr(page, default_localized_url_path)
+        old_url_path = getattr(old_record, localized_url_path) or getattr(
+            old_record, default_localized_url_path) or ''
+        new_url_path = getattr(page, localized_url_path) or getattr(
+            page, default_localized_url_path)
 
         if old_url_path == new_url_path:
             # nothing to do
             continue
 
         languages_changed.append(language)
-        _localized_update_descendant_url_paths(page, old_url_path, new_url_path, language)
+        _localized_update_descendant_url_paths(
+            page, old_url_path, new_url_path, language)
 
     _update_untranslated_descendants_url_paths(page, languages_changed)
 
@@ -487,7 +513,8 @@ def _update_untranslated_descendants_url_paths(page, languages_changed):
     for child in children:
         for language in languages_changed:
             _localized_set_url_path(child, page, language)
-        child.save(update_fields=update_fields)  # this will trigger any required saves downstream
+        # this will trigger any required saves downstream
+        child.save(update_fields=update_fields)
 
 
 class LocalizedSaveDescriptor(object):
@@ -518,7 +545,8 @@ class LocalizedSaveDescriptor(object):
             # Pages may have have their url_path_xx changed upstream when a parent has its url_path changed.
             # If that's the case let's propagate the change to children
             if not change_descendant_url_path:
-                localized_url_path = build_localized_fieldname('url_path', language)
+                localized_url_path = build_localized_fieldname(
+                    'url_path', language)
                 if not ('update_fields' in kwargs and localized_url_path not in kwargs['update_fields']):
                     old_record = old_record or Page.objects.get(id=instance.id)
                     if getattr(old_record, localized_url_path) != getattr(instance, localized_url_path):
